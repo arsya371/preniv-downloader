@@ -71,7 +71,7 @@ class VideoDownloader {
                     const total = this.api.formatFileSize(totalSize);
                     
                     const progressBar = this.createProgressBar(percentage);
-                    process.stdout.write(`\r⬇️  ${filename}: ${progressBar} ${percentage}% (${downloaded}/${total})`);
+                    process.stdout.write(`\r⬇️  ${filename}: ${percentage}% (${downloaded}/${total})`);
                 } else {
                     const downloaded = this.api.formatFileSize(downloadedSize);
                     process.stdout.write(`\r⬇️  ${filename}: ${downloaded}`);
@@ -494,7 +494,7 @@ async function main() {
             process.exit(1);
         }
 
-        console.log(green.bold(`🔍 Platform terdeteksi: ${platform.toUpperCase()}`));
+        console.log(green(`🔍 Platform terdeteksi: ${platform.toUpperCase()}`));
 
         const videoInfo = await downloader.api.getVideoInfo(options.url, platform);
 
@@ -505,7 +505,7 @@ async function main() {
 
         if (options.audioOnly) {
             if (platform === 'tiktok') {
-                console.log(green.bold('\n🎵 Mode: Audio saja (TikTok)'));
+                console.log(green('\n🎵 Mode: Audio saja (TikTok)'));
                 const filename = downloader.api.generateFilename(videoInfo, 'normal', 'base', platform);
                 
                 if (videoInfo.data.download && videoInfo.data.download.audio) {
@@ -514,14 +514,14 @@ async function main() {
                         options.output,
                         filename
                     );
-                    console.log(green.bold(`\n🎉 Audio berhasil diunduh: ${audioPath}`));
+                    console.log(green(`\n🎉 Audio berhasil diunduh: ${audioPath}`));
                 } else {
                     console.log(blueBright('❌ Audio tidak tersedia untuk video ini'));
                 }
             } else if (platform === 'ytmp3') {
                 console.log(green.bold('\n🎵 Mode: Audio saja (YouTube MP3)'));
                 const result = await downloader.downloadYouTubeMP3Audio(videoInfo, options.output);
-                console.log(green.bold(`\n🎉 Audio berhasil diunduh: ${result.audioPath}`));
+                console.log(green(`\n🎉 Audio berhasil diunduh: ${result.audioPath}`));
             } else {
                 console.log(redBright('❌ Error: Download audio hanya tersedia untuk TikTok dan YouTube'));
                 process.exit(1);
@@ -541,7 +541,7 @@ async function main() {
                 process.exit(1);
             }
             
-            console.log(green.bold(`\n🎉 Video berhasil diunduh: ${result.videoPath}`));
+            console.log(green(`\n🎉 Video berhasil diunduh: ${result.videoPath}`));
         } else {
             const supportedPlatforms = ['tiktok', 'facebook', 'ytmp4', 'ytmp3'];
             if (!supportedPlatforms.includes(platform)) {
@@ -558,15 +558,15 @@ async function main() {
                 modeText = 'Audio';
             }
 
-            console.log(green.bold(`\n🎬 Mode: ${modeText} (${platform.toUpperCase()})`));
+            console.log(green(`\n🎬 Mode: ${modeText} (${platform.toUpperCase()})`));
             const result = await downloader.downloadAll(videoInfo, options.output, options.quality, platform);
             
-            console.log(green.bold(`\n🎉 Download selesai!`));
+            console.log(green(`\n🎉 Download selesai!`));
             if (result.videoPath) {
-                console.log(green.bold(`📹 Video: ${result.videoPath}`));
+                console.log(`📹 Video: ${result.videoPath}`);
             }
             if (result.audioPath) {
-                console.log(green.bold(`🎵 Audio: ${result.audioPath}`));
+                console.log(`🎵 Audio: ${result.audioPath}`);
             }
         }
 
