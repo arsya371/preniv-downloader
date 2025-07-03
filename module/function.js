@@ -50,7 +50,7 @@ module.exports = class Function {
 
             const apiUrl = `${endpoint}?url=${encodeURIComponent(videoUrl)}`;
             
-            console.log(green.bold(`🔍 Mengambil informasi dari ${platform.toUpperCase()}...`));
+            console.log(`🔍 Mengambil informasi dari ${platform.toUpperCase()}...`);
             
             const data = await this.fetchJson(apiUrl, {
                 headers: {
