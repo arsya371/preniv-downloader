@@ -314,15 +314,14 @@ class VideoDownloader {
 
     showHelp() {
         console.log(`
-	  ${redBright(' █▀▄ █▀▄ ██▀ █▄ █ █ █ █')}  
-	  ${redBright(' █▀  █▀▄ █▄▄ █ ▀█ █ ▀▄▀')}  
+   ${redBright(' █▀▄ █▀▄ ██▀ █▄ █ █ █ █')}
+   ${redBright(' █▀  █▀▄ █▄▄ █ ▀█ █ ▀▄▀')} 
 
-      ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
-      ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
+   ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
+   ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
 
-       ${yellow('🎥 Multi-Platform Video Downloader')}
-	   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}
-       ${this.isTermux ? blueBright('✅ Termux') : blueBright('💻 OS (Linux, Mac, Windows)')}`);
+   ${yellow('Multi-Platform Video Downloader')}
+   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}`);
         
         console.log(`
 Usage:
@@ -471,17 +470,16 @@ async function main() {
     }
 
     try {
-console.log(`
-	  ${redBright(' █▀▄ █▀▄ ██▀ █▄ █ █ █ █')}
-	  ${redBright(' █▀  █▀▄ █▄▄ █ ▀█ █ ▀▄▀')}
+        console.log(`
+   ${redBright(' █▀▄ █▀▄ ██▀ █▄ █ █ █ █')}
+   ${redBright(' █▀  █▀▄ █▄▄ █ ▀█ █ ▀▄▀')} 
 
-      ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
-      ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
+   ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
+   ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
 
-       ${yellow('🎥 Multi-Platform Video Downloader')}
-	   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}
-       ${downloader.isTermux ? green('✅ Termux') : blueBright('💻 OS (Linux, Mac, Windows')}
-
+   ${yellow('Multi-Platform Video Downloader')}
+   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}
+   
 `);
 
         let platform = options.platform || detectPlatform(options.url);
