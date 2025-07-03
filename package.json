@@ -1,0 +1,33 @@
+{
+   "name": "preniv-downloader",
+   "version": "1.0.0",
+   "description": "Preniv Multi Platform Downloader CLI",
+   "main": "index.js",
+   "scripts": {
+      "start": "node ."
+   },
+   "repository": {
+      "type": "git",
+      "url": "git+https://github.com/arsya371/preniv-downloader.git"
+   },
+   "keywords": [
+      "preniv-downloader",
+      "tiktok-downloader", 
+      "facebok-downloader", 
+      "preniv"
+   ],
+   "author": "Arsya",
+   "license": "ISC",
+   "bugs": {
+      "url": "https://github.com/arsya371/preniv-downloader/issues"
+   },
+   "homepage": "https://github.com/arsya371/preniv-downloader#readme",
+   "dependencies": {
+      "axios": "~0.30.0",
+      "moment-timezone": "~0.5.34",
+      "node-fetch": "2.7.0",
+      "path": "~0.12.7",
+      "cfonts": "3.1.1",
+      "chalk": "4.1.0"
+   }
+}
