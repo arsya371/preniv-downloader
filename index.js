@@ -1,40 +1,35 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const Function = require('./module/function');
-const { green, blueBright, greenBright, redBright, cyan, yellow } = require('chalk')
+const VideoDownloaderAPI = require('./module/function');
+const { green, blueBright, greenBright, redBright, cyan, yellow } = require('chalk');
 
 class VideoDownloader {
     constructor() {
-        this.api = new Function();
+        this.api = new VideoDownloaderAPI();
         this.isTermux = this.detectTermux();
         this.defaultDownloadPath = this.getDefaultDownloadPath();
     }
-	
+
     detectTermux() {
-        return process.env.PREFIX && process.env.PREFIX.includes('com.termux') ||
+        return process.env.PREFIX?.includes('com.termux') ||
                process.env.TERMUX_VERSION ||
                fs.existsSync('/data/data/com.termux');
     }
 
     getDefaultDownloadPath() {
         if (this.isTermux) {
-            const termuxPaths = [
+            const paths = [
                 '/data/data/com.termux/files/home/storage/downloads',
                 '/data/data/com.termux/files/home/downloads',
                 '/sdcard/Download',
                 path.join(os.homedir(), 'downloads')
             ];
             
-            for (const dir of termuxPaths) {
-                try {
-                    if (fs.existsSync(dir)) {
-                        return dir;
-                    }
-                } catch (e) {
-                    continue;
-                }
-            }
+            return paths.find(dir => {
+                try { return fs.existsSync(dir); }
+                catch { return false; }
+            }) || './downloads';
         }
         
         return './downloads';
@@ -46,36 +41,24 @@ class VideoDownloader {
                 recursive: true,
                 mode: this.isTermux ? 0o755 : 0o777
             });
-            
-            if (this.isTermux) {
-                console.log(green(`📁 Direktori dibuat: ${dir}`));
-            }
         }
     }
-
+    
     async downloadFile(url, filepath, filename) {
         try {
             const response = await this.api.downloadStream(url);
+            if (!response) throw new Error('Failed to get download stream');
+
             const totalSize = parseInt(response.headers['content-length'] || 0);
             let downloadedSize = 0;
 
             const fileStream = fs.createWriteStream(filepath, {
                 mode: this.isTermux ? 0o644 : 0o666
             });
-            
+
             response.data.on('data', (chunk) => {
                 downloadedSize += chunk.length;
-                if (totalSize > 0) {
-                    const percentage = Math.round((downloadedSize / totalSize) * 100);
-                    const downloaded = this.api.formatFileSize(downloadedSize);
-                    const total = this.api.formatFileSize(totalSize);
-                    
-                    const progressBar = this.createProgressBar(percentage);
-                    process.stdout.write(`\r⬇️  ${filename}: ${percentage}% (${downloaded}/${total})`);
-                } else {
-                    const downloaded = this.api.formatFileSize(downloadedSize);
-                    process.stdout.write(`\r⬇️  ${filename}: ${downloaded}`);
-                }
+                this.showProgress(filename, downloadedSize, totalSize);
             });
 
             return new Promise((resolve, reject) => {
@@ -83,9 +66,7 @@ class VideoDownloader {
 
                 fileStream.on('finish', () => {
                     fileStream.close();
-                    if (this.isTermux) {
-                        console.log(green(`\n📂 Lokasi: ${filepath}`));
-                    }
+                    this.clearProgress();
                     resolve(filepath);
                 });
 
@@ -94,222 +75,151 @@ class VideoDownloader {
                     reject(error);
                 });
 
-                response.data.on('error', (error) => {
-                    reject(error);
-                });
+                response.data.on('error', reject);
             });
         } catch (error) {
-            console.log(redBright(`Error downloading file: ${error.message}`));
-            throw error;
+            throw new Error(`Download failed: ${error.message}`);
         }
     }
 
-    createProgressBar(percentage) {
-        const width = 20;
-        const filled = Math.round(width * percentage / 100);
-        const empty = width - filled;
-        return `[${'█'.repeat(filled)}${' '.repeat(empty)}]`;
-    }
+    showProgress(filename, downloaded, total) {
+        const maxFilenameLength = 25; // Sesuaikan dengan lebar terminal
+        const truncatedFilename = filename.length > maxFilenameLength 
+            ? filename.substring(0, maxFilenameLength - 3) + '...' 
+            : filename.padEnd(maxFilenameLength, ' ');
 
-    async downloadTikTokVideo(videoInfo, outputDir = null, quality = 'hd') {
-        try {
-            outputDir = outputDir || this.defaultDownloadPath;
-            this.createDirectory(outputDir);
-
-            const { data } = videoInfo;
+        const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        const spinnerIndex = Math.floor(Date.now() / 100) % spinner.length;
+        
+        if (total > 0) {
+            const percentage = Math.round((downloaded / total) * 100);
+            const downloadedFormatted = this.api.formatFileSize(downloaded);
+            const totalFormatted = this.api.formatFileSize(total);
             
-            this.api.displayVideoInfo(videoInfo, 'tiktok');
-
-            console.log(blueBright('\n🎥 Opsi Download Video:'));
-            data.download.video.forEach((url, index) => {
-                console.log(blueBright(`${index + 1}. Video ${index === 1 ? '(HD)' : index === 0 ? '(Normal)' : `(${index + 1})`}`));
-            });
-
-            let videoUrl;
-            if (quality === 'hd' && data.download.video.length > 1) {
-                videoUrl = data.download.video[1];
-            } else {
-                videoUrl = data.download.video[0];
-            }
-
-            const filename = this.api.generateFilename(videoInfo, quality, 'video', 'tiktok');
-            const videoFilename = `${filename}.mp4`;
-            const videoPath = path.join(outputDir, videoFilename);
-
-            await this.downloadFile(videoUrl, videoPath, videoFilename);
-
-            return {
-                videoPath,
-                audioUrl: data.download.audio,
-                filename: this.api.generateFilename(videoInfo, 'normal', 'base', 'tiktok')
-            };
-
-        } catch (error) {
-            console.log(redBright(`Error downloading TikTok video: ${error.message}`));
-            throw error;
+            const progressBarLength = 20;
+            const filledLength = Math.round((percentage / 100) * progressBarLength);
+            const progressBar = '█'.repeat(filledLength) + '░'.repeat(progressBarLength - filledLength);  
+            const progressText = `${spinner[spinnerIndex]} ${truncatedFilename} [${progressBar}] ${percentage}% (${downloadedFormatted}/${totalFormatted})`;
+            
+            const terminalWidth = process.stdout.columns || 80;
+            const paddedText = progressText.padEnd(terminalWidth, ' ');
+            
+            process.stdout.write(`\r${paddedText.substring(0, terminalWidth - 1)}`);
+        } else {
+            const progressText = `${spinner[spinnerIndex]} ${truncatedFilename}: ${this.api.formatFileSize(downloaded)}`;
+            const terminalWidth = process.stdout.columns || 80;
+            const paddedText = progressText.padEnd(terminalWidth, ' ');
+            
+            process.stdout.write(`\r${paddedText.substring(0, terminalWidth - 1)}`);
         }
     }
 
-    async downloadFacebookVideo(videoInfo, outputDir = null, quality = 'hd') {
-        try {
-            outputDir = outputDir || this.defaultDownloadPath;
-            this.createDirectory(outputDir);
-
-            const { data } = videoInfo;
-            
-            this.api.displayVideoInfo(videoInfo, 'facebook');
-
-            console.log(blueBright('\n🎥 Opsi Download Video:'));
-            data.forEach((video, index) => {
-                console.log(blueBright(`${index + 1}. Video ${video.resolution} (${video.format})`));
-            });
-
-            let selectedVideo;
-            if (quality === 'hd') {
-                selectedVideo = data.find(v => v.resolution.includes('720p') || v.resolution.includes('HD')) || data[0];
-            } else {
-                selectedVideo = data[0];
-            }
-
-            const filename = this.api.generateFilename(videoInfo, quality, 'video', 'facebook');
-            const videoFilename = `${filename}.mp4`;
-            const videoPath = path.join(outputDir, videoFilename);
-
-            await this.downloadFile(selectedVideo.url, videoPath, videoFilename);
-
-            return {
-                videoPath,
-                audioUrl: null,
-                filename: this.api.generateFilename(videoInfo, 'normal', 'base', 'facebook')
-            };
-
-        } catch (error) {
-            console.log(redBright(`Error downloading Facebook video: ${error.message}`));
-            throw error;
-        }
+    clearProgress() {
+        const terminalWidth = process.stdout.columns || 80;
+        const clearLine = ' '.repeat(terminalWidth);
+        process.stdout.write(`\r${clearLine}\r`);
     }
 
-    async downloadYouTubeMP4Video(videoInfo, outputDir = null, quality = 'hd') {
-        try {
-            outputDir = outputDir || this.defaultDownloadPath;
-            this.createDirectory(outputDir);
-
-            const { data } = videoInfo;
-            
-            this.api.displayVideoInfo(videoInfo, 'ytmp4');
-
-            console.log(blueBright('\n🎥 Opsi Download Video:'));
-            console.log(blueBright(`1. Video MP4 (${data.title})`));
-
-            const filename = this.api.generateFilename(videoInfo, quality, 'video', 'ytmp4');
-            const videoFilename = `${filename}.mp4`;
-            const videoPath = path.join(outputDir, videoFilename);
-
-            await this.downloadFile(data.url, videoPath, videoFilename);
-
-            return {
-                videoPath,
-                audioUrl: null,
-                filename: this.api.generateFilename(videoInfo, 'normal', 'base', 'ytmp4')
-            };
-
-        } catch (error) {
-            console.log(redBright(`Error downloading YouTube MP4 video: ${error.message}`));
-            throw error;
-        }
+    showProgressWithSpinner(filename, downloaded) {
+        this.showProgress(filename, downloaded, 0);
     }
 
-    async downloadYouTubeMP3Audio(videoInfo, outputDir = null) {
-        try {
-            outputDir = outputDir || this.defaultDownloadPath;
-            this.createDirectory(outputDir);
+    async downloadByPlatform(videoInfo, platform, options = {}) {
+        const { outputDir = this.defaultDownloadPath, quality = 'hd', audioOnly = false } = options;
+        
+        this.createDirectory(outputDir);
+        this.api.displayVideoInfo(videoInfo, platform);
 
-            const { result } = videoInfo;
-            
-            this.api.displayVideoInfo(videoInfo, 'ytmp3');
+        const downloaders = {
+            tiktok: () => this.downloadTikTok(videoInfo, outputDir, quality, audioOnly),
+            facebook: () => this.downloadFacebook(videoInfo, outputDir, quality),
+            ytmp4: () => this.downloadYouTubeVideo(videoInfo, outputDir, quality),
+            ytmp3: () => this.downloadYouTubeAudio(videoInfo, outputDir),
+            spotify: () => this.downloadSpotify(videoInfo, outputDir)
+        };
 
-            console.log(blueBright('\n🎵 Opsi Download Audio:'));
-            console.log(blueBright(`1. Audio MP3 (${result.title})`));
-
-            const filename = this.api.generateFilename(videoInfo, 'normal', 'audio', 'ytmp3');
-            const audioFilename = `${filename}.mp3`;
-            const audioPath = path.join(outputDir, audioFilename);
-
-            await this.downloadFile(result.audio_url, audioPath, audioFilename);
-
-            return {
-                videoPath: null,
-                audioPath,
-                filename: this.api.generateFilename(videoInfo, 'normal', 'base', 'ytmp3')
-            };
-
-        } catch (error) {
-            console.log(redBright(`Error downloading YouTube MP3 audio: ${error.message}`));
-            throw error;
+        const downloader = downloaders[platform];
+        if (!downloader) {
+            throw new Error(`Platform ${platform} not supported`);
         }
+
+        return await downloader();
     }
 
-    async downloadAudio(audioUrl, outputDir, filename) {
-        try {
-            const audioFilename = `${filename}_audio.mp3`;
-            const audioPath = path.join(outputDir, audioFilename);
-
-            await this.downloadFile(audioUrl, audioPath, audioFilename);
-            return audioPath;
-        } catch (error) {
-            console.log(redBright(`Error downloading audio: ${error.message}`));
-            throw error;
+    async downloadTikTok(videoInfo, outputDir, quality, audioOnly) {
+        const { data } = videoInfo;
+        const urls = this.api.getDownloadUrls(videoInfo, 'tiktok');
+        
+        if (audioOnly && urls.audio) {
+            return await this.downloadAudioOnly(urls.audio, outputDir, videoInfo, 'tiktok');
         }
+
+        const videoUrl = quality === 'hd' && urls.video[1] ? urls.video[1] : urls.video[0];
+        const filename = this.api.generateFilename(videoInfo, 'tiktok', 'video');
+        const videoPath = path.join(outputDir, `${filename}.mp4`);
+
+        await this.downloadFile(videoUrl, videoPath, `${filename}.mp4`);
+
+        const result = { videoPath };
+        
+        if (urls.audio) {
+            const audioPath = await this.downloadAudioOnly(urls.audio, outputDir, videoInfo, 'tiktok');
+            result.audioPath = audioPath;
+        }
+
+        return result;
     }
 
-    async downloadAll(videoInfo, outputDir = null, quality = 'hd', platform = 'tiktok') {
-        try {
-            outputDir = outputDir || this.defaultDownloadPath;
-            let result;
-            
-            if (platform === 'tiktok') {
-                result = await this.downloadTikTokVideo(videoInfo, outputDir, quality);
-                
-                if (result.audioUrl) {
-                    const audioPath = await this.downloadAudio(
-                        result.audioUrl,
-                        outputDir,
-                        result.filename
-                    );
-                    
-                    return {
-                        videoPath: result.videoPath,
-                        audioPath: audioPath
-                    };
-                }
-            } else if (platform === 'facebook') {
-                result = await this.downloadFacebookVideo(videoInfo, outputDir, quality);
-                
-                return {
-                    videoPath: result.videoPath,
-                    audioPath: null 
-                };
-            } else if (platform === 'ytmp4') {
-                result = await this.downloadYouTubeMP4Video(videoInfo, outputDir, quality);
-                
-                return {
-                    videoPath: result.videoPath,
-                    audioPath: null
-                };
-            } else if (platform === 'ytmp3') {
-                result = await this.downloadYouTubeMP3Audio(videoInfo, outputDir);
-                
-                return {
-                    videoPath: null,
-                    audioPath: result.audioPath
-                };
-            }
-            
-            return result;
-        } catch (error) {
-            console.log(redBright(`Error downloading all: ${error.message}`));
-            throw error;
-        }
+    async downloadFacebook(videoInfo, outputDir, quality) {
+        const urls = this.api.getDownloadUrls(videoInfo, 'facebook');
+        const videoUrl = urls.video[0]; // Take first available quality
+        
+        const filename = this.api.generateFilename(videoInfo, 'facebook', 'video');
+        const videoPath = path.join(outputDir, `${filename}.mp4`);
+
+        await this.downloadFile(videoUrl, videoPath, `${filename}.mp4`);
+        return { videoPath };
+    }
+
+    async downloadYouTubeVideo(videoInfo, outputDir, quality) {
+        const urls = this.api.getDownloadUrls(videoInfo, 'ytmp4');
+        const videoUrl = urls.video[0];
+        
+        const filename = this.api.generateFilename(videoInfo, 'ytmp4', 'video');
+        const videoPath = path.join(outputDir, `${filename}.mp4`);
+
+        await this.downloadFile(videoUrl, videoPath, `${filename}.mp4`);
+        return { videoPath };
+    }
+
+    async downloadYouTubeAudio(videoInfo, outputDir) {
+        const urls = this.api.getDownloadUrls(videoInfo, 'ytmp3');
+        const audioUrl = urls.audio;
+        
+        const filename = this.api.generateFilename(videoInfo, 'ytmp3', 'audio');
+        const audioPath = path.join(outputDir, `${filename}.mp3`);
+
+        await this.downloadFile(audioUrl, audioPath, `${filename}.mp3`);
+        return { audioPath };
+    }
+
+    async downloadSpotify(videoInfo, outputDir) {
+        const urls = this.api.getDownloadUrls(videoInfo, 'spotify');
+        const audioUrl = urls.audio;
+        
+        const filename = this.api.generateFilename(videoInfo, 'spotify', 'audio');
+        const audioPath = path.join(outputDir, `${filename}.mp3`);
+
+        await this.downloadFile(audioUrl, audioPath, `${filename}.mp3`);
+        return { audioPath };
+    }
+
+    async downloadAudioOnly(audioUrl, outputDir, videoInfo, platform) {
+        const filename = this.api.generateFilename(videoInfo, platform, 'audio');
+        const audioPath = path.join(outputDir, `${filename}.mp3`);
+        
+        await this.downloadFile(audioUrl, audioPath, `${filename}.mp3`);
+        return audioPath;
     }
 
     showHelp() {
@@ -320,56 +230,44 @@ class VideoDownloader {
    ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
    ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
 
-   ${yellow('Multi-Platform Video Downloader')}
-   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}`);
-        
-        console.log(`
+   ${yellow('Multi-Platform Video & Music Downloader')}
+   ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}
+
 Usage:
   node index.js [options] <video_url>
 
 Options:
-  -p, --platform <name>   Platform: tiktok, facebook, ytmp4, ytmp3 (auto-detect if not specified)
+  -p, --platform <name>   Platform: tiktok, facebook, ytmp4, ytmp3, spotify
   -o, --output <dir>      Output directory (default: ${this.defaultDownloadPath})
   -q, --quality <type>    Video quality: normal, hd (default: hd)
-  -a, --audio-only        Download audio only (TikTok/YouTube only)
-  -v, --video-only        Download video only
-  -i, --info              Show video info only
+  -a, --audio-only        Download audio only
   -h, --help              Show this help
 
 Examples:
-  node index.js https://www.tiktok.com/@user/video/1234567890
-  node index.js https://facebook.com/watch/?v=1234567890
-  node index.js https://www.youtube.com/watch?v=dQw4w9WgXcQ
-  node index.js -p ytmp3 https://www.youtube.com/watch?v=dQw4w9WgXcQ
+  node index.js https://www.tiktok.com/@user/video/..
+  node index.js https://facebook.com/watch/...
+  node index.js https://www.youtube.com/...
+  node index.js -p ytmp3 https://www.youtube.com/....
+  node index.js https://open.spotify.com/track/..
+  node index.js -p spotify https://open.spotify.com/track/...
   node index.js -o /sdcard/Download -q hd https://tiktok.com/...
   node index.js --audio-only https://tiktok.com/...
-  node index.js --info https://facebook.com/...
 
-${blueBright('🎥 Supported Platforms:\n  • TikTok (tiktok.com, vm.tiktok.com)\n  • Facebook (facebook.com, fb.watch)\n  • YouTube MP4 (youtube.com, youtu.be) - Video\n  • YouTube MP3 (youtube.com, youtu.be) - Audio')}
-
-${this.isTermux ? yellow(`
-Termux Setup:
-  1. pkg install nodejs
-  2. npm install
-  3. termux-setup-storage (untuk akses storage)
-  
-Storage Access:
-  Default download path: ${this.defaultDownloadPath}
-  
-Note: Pastikan storage permission sudah diaktifkan!
-`) : (`
-Dependencies:
-  ${yellow('npm install')}
-	`)}
+Supported Platforms:
+  • TikTok (tiktok.com, vm.tiktok.com)
+  • Facebook (facebook.com, fb.watch)
+  • YouTube MP4 (youtube.com, youtu.be) - Video
+  • YouTube MP3 (youtube.com, youtu.be) - Audio
+  • Spotify (open.spotify.com) - Audio
         `);
     }
 
-    checkTermuxPermissions() {
+    checkPermissions() {
         if (this.isTermux) {
             const storagePath = '/data/data/com.termux/files/home/storage';
             if (!fs.existsSync(storagePath)) {
-                console.log(redBright('⚠️  Storage belum di-setup!'));
-                console.log(blueBright('💡 Jalankan: termux-setup-storage'));
+                console.log(redBright('⚠️  Storage not setup!'));
+                console.log(blueBright('💡 Run: termux-setup-storage'));
                 return false;
             }
         }
@@ -379,49 +277,49 @@ Dependencies:
 
 function parseArgs() {
     const args = process.argv.slice(2);
-    const downloader = new VideoDownloader();
-    
     const options = {
         platform: null,
-        output: downloader.defaultDownloadPath,
+        output: null,
         quality: 'hd',
         audioOnly: false,
-        videoOnly: false,
         infoOnly: false,
-        url: null
+        url: null,
+        showHelp: false
     };
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         
-        switch (arg) {
-            case '-p':
+        const argMap = {
+            '-p': '--platform',
+            '-o': '--output',
+            '-q': '--quality',
+            '-a': '--audio-only',
+            '-i': '--info',
+            '-h': '--help'
+        };
+
+        const fullArg = argMap[arg] || arg;
+
+        switch (fullArg) {
             case '--platform':
                 options.platform = args[++i];
                 break;
-            case '-o':
             case '--output':
                 options.output = args[++i];
                 break;
-            case '-q':
             case '--quality':
                 options.quality = args[++i];
                 break;
-            case '-a':
             case '--audio-only':
                 options.audioOnly = true;
                 break;
-            case '-v':
-            case '--video-only':
-                options.videoOnly = true;
-                break;
-            case '-i':
             case '--info':
                 options.infoOnly = true;
                 break;
-            case '-h':
             case '--help':
-                return { showHelp: true };
+                options.showHelp = true;
+                break;
             default:
                 if (!arg.startsWith('-')) {
                     options.url = arg;
@@ -434,39 +332,33 @@ function parseArgs() {
 }
 
 function detectPlatform(url) {
-    if (url.includes('tiktok.com') || url.includes('vm.tiktok.com')) {
-        return 'tiktok';
-    } else if (url.includes('facebook.com') || url.includes('fb.watch')) {
-        return 'facebook';
-    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        return 'ytmp4'; 
-    }
-    return 'unknown';
+    const platforms = {
+        'tiktok.com': 'tiktok',
+        'vm.tiktok.com': 'tiktok',
+        'facebook.com': 'facebook',
+        'fb.watch': 'facebook',
+        'youtube.com': 'ytmp4',
+        'youtu.be': 'ytmp4',
+        'open.spotify.com': 'spotify'
+    };
+
+    return Object.keys(platforms).find(domain => url.includes(domain))
+        ? platforms[Object.keys(platforms).find(domain => url.includes(domain))]
+        : 'unknown';
 }
 
 async function main() {
     const options = parseArgs();
     const downloader = new VideoDownloader();
-
-    if (downloader.isTermux) {
-        if (!downloader.checkTermuxPermissions()) {
-            process.exit(1);
-        }
-    }
-
-    if (options.showHelp) {
-        downloader.showHelp();
-        return;
-    }
-    
-    if (!options.url) {
-        console.log('\n💡 Contoh penggunaan:');
-        console.log('node index.js https://www.tiktok.com/@user/video/1234567890');
-        console.log('node index.js https://facebook.com/watch/?v=1234567890');
-        console.log('node index.js https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-        console.log('node index.js -p ytmp3 https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-        downloader.showHelp();
+    if (!downloader.checkPermissions()) {
         process.exit(1);
+    }
+    if (options.showHelp || !options.url) {
+        downloader.showHelp();
+        if (!options.url) {
+            console.log('\n💡 Please provide a video URL');
+        }
+        process.exit(options.showHelp ? 0 : 1);
     }
 
     try {
@@ -477,107 +369,48 @@ async function main() {
    ${'\x1b[37m'} █▀▄ ▄▀▄ █   █ █▄ █ █   ▄▀▄ ▄▀▄ █▀▄ ██▀ █▀▄${'\x1b[0m'}
    ${'\x1b[37m'} █▄▀ ▀▄▀ ▀▄▀▄▀ █ ▀█ █▄▄ ▀▄▀ █▀█ █▄▀ █▄▄ █▀▄${'\x1b[0m'}
 
-   ${yellow('Multi-Platform Video Downloader')}
+   ${yellow('Multi-Platform Video & Music Downloader')}
    ${greenBright('Github : https://github.com/arsya371/preniv-downloader')}
-   
-`);
-
+        `);
         let platform = options.platform || detectPlatform(options.url);
-        
-        if (options.audioOnly && (platform === 'ytmp4' || (options.url.includes('youtube.com') || options.url.includes('youtu.be')))) {
+        if (options.audioOnly && platform === 'ytmp4') {
             platform = 'ytmp3';
         }
         
         if (platform === 'unknown') {
-            console.error(redBright('❌ Error: Platform tidak didukung!'));
-            console.log('💡 Platform yang didukung: TikTok, Facebook, YouTube');
+            console.error(redBright('❌ Platform not supported!'));
             process.exit(1);
         }
 
-        console.log(green(`🔍 Platform terdeteksi: ${platform.toUpperCase()}`));
-
+        console.log(green(`🔍 Platform: ${platform.toUpperCase()}`));
         const videoInfo = await downloader.api.getVideoInfo(options.url, platform);
-
+        
+        if (!downloader.api.isValidVideoInfo(videoInfo, platform)) {
+            throw new Error('Invalid video info received');
+        }
+        
         if (options.infoOnly) {
             downloader.api.displayVideoInfo(videoInfo, platform);
             return;
         }
 
-        if (options.audioOnly) {
-            if (platform === 'tiktok') {
-                console.log(green('\n🎵 Mode: Audio saja (TikTok)'));
-                const filename = downloader.api.generateFilename(videoInfo, 'normal', 'base', platform);
-                
-                if (videoInfo.data.download && videoInfo.data.download.audio) {
-                    const audioPath = await downloader.downloadAudio(
-                        videoInfo.data.download.audio,
-                        options.output,
-                        filename
-                    );
-                    console.log(green(`\n🎉 Audio berhasil diunduh: ${audioPath}`));
-                } else {
-                    console.log(blueBright('❌ Audio tidak tersedia untuk video ini'));
-                }
-            } else if (platform === 'ytmp3') {
-                console.log(green.bold('\n🎵 Mode: Audio saja (YouTube MP3)'));
-                const result = await downloader.downloadYouTubeMP3Audio(videoInfo, options.output);
-                console.log(green(`\n🎉 Audio berhasil diunduh: ${result.audioPath}`));
-            } else {
-                console.log(redBright('❌ Error: Download audio hanya tersedia untuk TikTok dan YouTube'));
-                process.exit(1);
-            }
-        } else if (options.videoOnly) {
-            console.log(green.bold('\n🎥 Mode: Video saja'));
-            let result;
-            
-            if (platform === 'tiktok') {
-                result = await downloader.downloadTikTokVideo(videoInfo, options.output, options.quality);
-            } else if (platform === 'facebook') {
-                result = await downloader.downloadFacebookVideo(videoInfo, options.output, options.quality);
-            } else if (platform === 'ytmp4') {
-                result = await downloader.downloadYouTubeMP4Video(videoInfo, options.output, options.quality);
-            } else {
-                console.log(redBright('❌ Error: Platform tidak mendukung download video'));
-                process.exit(1);
-            }
-            
-            console.log(green(`\n🎉 Video berhasil diunduh: ${result.videoPath}`));
-        } else {
-            const supportedPlatforms = ['tiktok', 'facebook', 'ytmp4', 'ytmp3'];
-            if (!supportedPlatforms.includes(platform)) {
-                console.log(redBright(`❌ Error: Platform ${platform} tidak didukung`));
-                process.exit(1);
-            }
+        const downloadOptions = {
+            outputDir: options.output || downloader.defaultDownloadPath,
+            quality: options.quality,
+            audioOnly: options.audioOnly
+        };
 
-            let modeText = '';
-            if (platform === 'tiktok') {
-                modeText = 'Video + Audio';
-            } else if (platform === 'facebook' || platform === 'ytmp4') {
-                modeText = 'Video';
-            } else if (platform === 'ytmp3') {
-                modeText = 'Audio';
-            }
-
-            console.log(green(`\n🎬 Mode: ${modeText} (${platform.toUpperCase()})`));
-            const result = await downloader.downloadAll(videoInfo, options.output, options.quality, platform);
-            
-            console.log(green(`\n🎉 Download selesai!`));
-            if (result.videoPath) {
-                console.log(`📹 Video: ${result.videoPath}`);
-            }
-            if (result.audioPath) {
-                console.log(`🎵 Audio: ${result.audioPath}`);
-            }
+        const result = await downloader.downloadByPlatform(videoInfo, platform, downloadOptions);
+        console.log(green('\n🎉 Download completed!'));
+        if (result.videoPath) {
+            console.log(`📹 Video: ${result.videoPath}`);
+        }
+        if (result.audioPath) {
+            console.log(`🎵 Audio: ${result.audioPath}`);
         }
 
     } catch (error) {
         console.error(redBright(`\n❌ Error: ${error.message}`));
-        if (downloader.isTermux) {
-            console.log(blueBright('\n💡 Tips Termux:'));
-            console.log('- Pastikan koneksi internet stabil');
-            console.log('- Cek storage permission dengan: termux-setup-storage');
-            console.log('- Coba restart Termux jika masih error');
-        }
         process.exit(1);
     }
 }
