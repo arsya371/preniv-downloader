@@ -1,4 +1,4 @@
-# 🎥 Preniv - Multi Platform Video Downloader
+# 🎥 Preniv - Multi Platform Video & Music Downloader
 
 Tool canggih untuk download video dari berbagai platform seperti TikTok, Facebook, Spotify, dan YouTube dengan dukungan penuh untuk Termux Android.
 
@@ -130,7 +130,7 @@ node index.js --info https://facebook.com/...
 | **Facebook** | ✅ | ❌ | ✅ | ✅ |
 | **YouTube (MP4)** | ✅ | ❌ | ✅ | ✅ |
 | **YouTube (MP3)** | ❌ | ✅ | ✅ | Manual |
-| **YouTube (MP3)** | ❌ | ✅ | ✅ | ✅ |
+| **Spottify** | ❌ | ✅ | ✅ | ✅ |
 
 ### URL yang Didukung
 - TikTok: `tiktok.com`, `vm.tiktok.com`
