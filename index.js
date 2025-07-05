@@ -19,19 +19,21 @@ class VideoDownloader {
 
     getDefaultDownloadPath() {
         if (this.isTermux) {
-            const paths = [
-                '/data/data/com.termux/files/home/storage/downloads',
-                '/data/data/com.termux/files/home/downloads',
-                '/sdcard/Download',
-                path.join(os.homedir(), 'downloads')
-            ];
-            
-            return paths.find(dir => {
-                try { return fs.existsSync(dir); }
-                catch { return false; }
-            }) || './downloads';
+            const targetPath = '/sdcard/Download/Preniv_Result';
+            if (fs.existsSync(targetPath)) {
+                return targetPath;
+            }
+
+            try {
+                fs.mkdirSync(targetPath, { recursive: true, mode: 0o755 });
+                return targetPath;
+            } catch (createError) {
+                console.log(yellow(`⚠️  Cannot create ${targetPath}: ${createError.message}`));
+                console.log(yellow('📁 Using fallback directory: ./downloads'));
+                return './downloads';
+            }
         }
-        
+
         return './downloads';
     }
 
@@ -172,7 +174,7 @@ class VideoDownloader {
 
     async downloadFacebook(videoInfo, outputDir, quality) {
         const urls = this.api.getDownloadUrls(videoInfo, 'facebook');
-        const videoUrl = urls.video[0]; // Take first available quality
+        const videoUrl = urls.video[0];
         
         const filename = this.api.generateFilename(videoInfo, 'facebook', 'video');
         const videoPath = path.join(outputDir, `${filename}.mp4`);
@@ -250,7 +252,7 @@ Examples:
   node index.js -p ytmp3 https://www.youtube.com/....
   node index.js https://open.spotify.com/track/..
   node index.js -p spotify https://open.spotify.com/track/...
-  node index.js -o /sdcard/Download -q hd https://tiktok.com/...
+  node index.js -o /sdcard/Download/Preniv_Result -q hd https://tiktok.com/...
   node index.js --audio-only https://tiktok.com/...
 
 Supported Platforms:
