@@ -384,7 +384,6 @@ async function main() {
             process.exit(1);
         }
 
-        console.log(green(`🔍 Platform: ${platform.toUpperCase()}`));
         const videoInfo = await downloader.api.getVideoInfo(options.url, platform);
         
         if (!downloader.api.isValidVideoInfo(videoInfo, platform)) {
@@ -405,10 +404,10 @@ async function main() {
         const result = await downloader.downloadByPlatform(videoInfo, platform, downloadOptions);
         console.log(green('\n🎉 Download completed!'));
         if (result.videoPath) {
-            console.log(`📹 Video: ${result.videoPath}`);
+            console.log(`📹 Video: ${green(`${result.videoPath}`)}`);
         }
         if (result.audioPath) {
-            console.log(`🎵 Audio: ${result.audioPath}`);
+            console.log(`🎵 Audio: ${green(`${result.audioPath}`)}`);
         }
 
     } catch (error) {
