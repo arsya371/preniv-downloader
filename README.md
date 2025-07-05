@@ -136,6 +136,7 @@ node index.js --info https://facebook.com/...
 - TikTok: `tiktok.com`, `vm.tiktok.com`
 - Facebook: `facebook.com`, `fb.watch`
 - YouTube: `youtube.com`, `youtu.be`
+- Spotify: `open.spotify.com`
 
 ## 🖥️ Konfigurasi Platform
 
