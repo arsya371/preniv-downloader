@@ -83,7 +83,7 @@ class VideoDownloader {
     }
 
     showProgress(filename, downloaded, total) {
-        const maxFilenameLength = 25; // Sesuaikan dengan lebar terminal
+        const maxFilenameLength = 25;
         const truncatedFilename = filename.length > maxFilenameLength 
             ? filename.substring(0, maxFilenameLength - 3) + '...' 
             : filename.padEnd(maxFilenameLength, ' ');
@@ -99,7 +99,7 @@ class VideoDownloader {
             const progressBarLength = 20;
             const filledLength = Math.round((percentage / 100) * progressBarLength);
             const progressBar = '█'.repeat(filledLength) + '░'.repeat(progressBarLength - filledLength);  
-            const progressText = `${spinner[spinnerIndex]} ${truncatedFilename} [${progressBar}] ${percentage}% (${downloadedFormatted}/${totalFormatted})`;
+            const progressText = `${spinner[spinnerIndex]} ${truncatedFilename} [${progressBar}] (${downloadedFormatted}/${totalFormatted})`;
             
             const terminalWidth = process.stdout.columns || 80;
             const paddedText = progressText.padEnd(terminalWidth, ' ');
