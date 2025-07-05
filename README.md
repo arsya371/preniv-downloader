@@ -1,10 +1,10 @@
 # 🎥 Preniv - Multi Platform Video Downloader
 
-Tool canggih untuk download video dari berbagai platform seperti TikTok, Facebook, dan YouTube dengan dukungan penuh untuk Termux Android.
+Tool canggih untuk download video dari berbagai platform seperti TikTok, Facebook, Spotify, dan YouTube dengan dukungan penuh untuk Termux Android.
 
 ## ✨ Fitur Utama
 
-- 🎯 **Multi-Platform**: TikTok, Facebook, YouTube (MP4 & MP3)
+- 🎯 **Multi-Platform**: TikTok, Facebook, YouTube (MP4 & MP3), Spotify
 - 🎬 **Kualitas Beragam**: Normal, HD, dan deteksi otomatis kualitas terbaik
 - 🎵 **Ekstrak Audio**: Download audio terpisah dari video
 - 📱 **Termux Support**: Dioptimalkan untuk Android Termux
@@ -89,7 +89,7 @@ node index.js [options] <video_url>
 
 | Opsi | Deskripsi | Contoh |
 |------|-----------|--------|
-| `-p, --platform` | Platform: tiktok, facebook, ytmp4, ytmp3 | `-p ytmp3` |
+| `-p, --platform` | Platform: tiktok, facebook, spotify, ytmp4, ytmp3 | `-p ytmp3` |
 | `-o, --output` | Folder download | `-o /sdcard/Download` |
 | `-q, --quality` | Kualitas: normal, hd | `-q hd` |
 | `-a, --audio-only` | Download audio saja | `-a` |
@@ -130,6 +130,7 @@ node index.js --info https://facebook.com/...
 | **Facebook** | ✅ | ❌ | ✅ | ✅ |
 | **YouTube (MP4)** | ✅ | ❌ | ✅ | ✅ |
 | **YouTube (MP3)** | ❌ | ✅ | ✅ | Manual |
+| **YouTube (MP3)** | ❌ | ✅ | ✅ | ✅ |
 
 ### URL yang Didukung
 - TikTok: `tiktok.com`, `vm.tiktok.com`
@@ -233,7 +234,7 @@ source ~/.bashrc
 
 ### Auto-Detection Platform
 Tool akan otomatis mendeteksi platform dari URL:
-- Tidak perlu specify `-p` untuk TikTok, Facebook, YouTube MP4
+- Tidak perlu specify `-p` untuk TikTok, Facebook, Spotify, YouTube MP4
 - Gunakan `-p ytmp3` khusus untuk YouTube audio
 
 ### Smart File Naming
